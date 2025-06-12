@@ -4,7 +4,7 @@ provider "aws" {
 
 resource "aws_key_pair" "deployer" {
   key_name   = "terraform"
-  public_key = file("/root/.ssh/id_ed25519.pub")
+  public_key = file("/home/ubuntu/.ssh/id_ed25519.pub")
 }
 
 resource "aws_security_group" "allow_ports" {
