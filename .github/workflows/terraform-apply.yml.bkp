@@ -1,3 +1,5 @@
+name: Terraform Apply and Destroy
+
 on:
   push:
     branches: [ main ]
@@ -41,52 +43,6 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-
-      - name: Output public IP
-        id: output
-        run: |
-          echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
-
-    outputs:
-      server_ip: ${{ steps.output.outputs.SERVER_IP }}
-
-  nginx:
-    needs: terraform-apply
-    if: ${{ always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')) }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Ansible
-        run: sudo apt-get update && sudo apt-get install -y ansible
-
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
-
-      - name: Run Ansible Playbook for Nginx Default Page
-        run: |
-          cat > nginx-default.yml <<EOF
-          - hosts: all
-            become: yes
-            tasks:
-              - name: Install Nginx
-                apt:
-                  name: nginx
-                  state: present
-                  update_cache: yes
-              - name: Ensure Nginx is started and enabled
-                service:
-                  name: nginx
-                  state: started
-                  enabled: yes
-          EOF
-          ansible-playbook -i "${{ needs.terraform-apply.outputs.server_ip }}," nginx-default.yml -u ubuntu --private-key ~/.ssh/id_rsa
 
   terraform-destroy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
