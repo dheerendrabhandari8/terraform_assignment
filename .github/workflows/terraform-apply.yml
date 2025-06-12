@@ -1,3 +1,5 @@
+name: Terraform & Ansible Nginx Deploy
+
 on:
   push:
     branches: [ main ]
@@ -52,7 +54,7 @@ jobs:
 
   nginx:
     needs: terraform-apply
-    if: ${{ always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')) }}
+    if: needs.terraform-apply.result == 'success' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))
     runs-on: ubuntu-latest
 
     steps:
@@ -67,7 +69,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ needs.terraform-apply.outputs.server_ip }}" >> ~/.ssh/known_hosts
 
       - name: Run Ansible Playbook for Nginx Default Page
         run: |
