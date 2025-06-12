@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_key_pair" "deployer" {
-  key_name   = "terraform"
+  key_name   = "test"
   public_key = file("id_ed25519.pub")
 }
 
@@ -67,6 +67,6 @@ resource "aws_instance" "example" {
   vpc_security_group_ids = [aws_security_group.allow_ports.id]
 
   tags = {
-    Name = "ExampleInstance"
+    Name = "Instance"
   }
 }
