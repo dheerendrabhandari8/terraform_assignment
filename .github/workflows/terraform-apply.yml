@@ -1,22 +1,18 @@
-name: Terraform Workflow
+name: Terraform Apply and Destroy
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       action:
         description: "Terraform action to perform (apply or destroy)"
-        required: true
+        required: false
         default: "apply"
-        type: choice
-        options:
-          - apply
-          - destroy
 
 jobs:
-  terraform:
-    if: github.event_name == 'push' || github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy'
+  terraform-apply:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     runs-on: ubuntu-latest
 
     env:
@@ -43,14 +39,31 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
-      - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
-        run: terraform destroy -auto-approve
+  terraform-destroy:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    runs-on: ubuntu-latest
 
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'ap-south-1' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
