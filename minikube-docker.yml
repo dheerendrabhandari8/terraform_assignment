@@ -1,0 +1,54 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install dependencies for minikube and docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Install Docker
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+        add-apt-repository \
+          "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+          $(lsb_release -cs) \
+          stable"
+        apt-get update
+        apt-get install -y docker-ce docker-ce-cli containerd.io
+      args:
+        warn: false
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Download Minikube
+      get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube
+        mode: '0755'
+
+    - name: Ensure Minikube is executable
+      file:
+        path: /usr/local/bin/minikube
+        mode: '0755'
+        owner: root
+        group: root
+        state: file
+
+    - name: Start Minikube as ubuntu user
+      become: yes
+      become_user: ubuntu
+      environment:
+        CHANGE_MINIKUBE_NONE_USER: "true"
+      shell: |
+        minikube start --driver=docker
