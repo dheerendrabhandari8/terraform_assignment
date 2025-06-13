@@ -11,3 +11,4 @@ latest
 new :wq
 fd`
 new
+new `
