@@ -10,3 +10,4 @@ this is final test
 latest
 new :wq
 fd`
+new
