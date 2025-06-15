@@ -75,7 +75,7 @@ jobs:
       - name: Trigger docker-build-and-k8s pipeline
         uses: peter-evans/workflow-dispatch@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TOKEN }}
           repository: ${{ github.repository }}
           workflow: docker-build-and-k8s.yml
           ref: ${{ github.ref }}
