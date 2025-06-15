@@ -2,7 +2,6 @@ name: Provision Infrastructure with Terraform
 
 on:
   push:
-    branches: [main]  # Ensure this runs on the default branch
     paths:
       - '**/*.tf'
       - '**/terraform.yml'
@@ -21,13 +20,14 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    outputs:
-      server_ip: ${{ steps.output.outputs.SERVER_IP }}
 
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'ap-south-1' }}
+
+    outputs:
+      server_ip: ${{ steps.output.outputs.SERVER_IP }}
 
     steps:
       - name: Checkout repository
@@ -40,27 +40,29 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        if: github.event.inputs.action == 'apply' || github.event_name == 'push'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'apply'
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        if: github.event.inputs.action == 'apply' || github.event_name == 'push'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
       - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
         run: terraform destroy -auto-approve
 
       - name: Output public IP
-        if: github.event.inputs.action == 'apply' || github.event_name == 'push'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'apply'
         id: output
         run: |
           echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
 
-      - name: Save public IP to file
+      - name: Save public IP as artifact
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'apply'
         run: echo "${{ steps.output.outputs.SERVER_IP }}" > server_ip.txt
 
-      - name: Upload public IP as artifact
+      - name: Upload server IP artifact
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'apply'
         uses: actions/upload-artifact@v4
         with:
           name: server-ip
@@ -69,6 +71,7 @@ jobs:
   ansible:
     needs: terraform
     runs-on: ubuntu-latest
+    if: ${{ success() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')) }}
 
     steps:
       - name: Checkout repository
@@ -84,7 +87,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ needs.terraform.outputs.server_ip }} >> ~/.ssh/known_hosts
 
-      - name: Run Ansible playbook
+      - name: Run Ansible Install Playbook
         run: |
           ansible-playbook -i "${{ needs.terraform.outputs.server_ip }}," ansible-playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
 
