@@ -1,0 +1,130 @@
+---
+- name: Setup Docker, Minikube, and Deploy Kubernetes App
+  hosts: all
+  become: true
+
+  vars:
+    minikube_bin_path: "/usr/local/bin/minikube"
+    kubectl_bin_path: "/usr/local/bin/kubectl"
+    minikube_url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+    test_app_service_port: 3000
+    docker_user: "ubuntu"   # Change this if you want a different user added to docker group
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - wget
+        state: present
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker is started and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add user to docker group
+      user:
+        name: "{{ docker_user }}"
+        groups: docker
+        append: yes
+
+    - name: Download Minikube binary
+      get_url:
+        url: "{{ minikube_url }}"
+        dest: /tmp/minikube-linux-amd64
+        mode: '0755'
+
+    - name: Move Minikube binary to /usr/local/bin
+      copy:
+        src: /tmp/minikube-linux-amd64
+        dest: "{{ minikube_bin_path }}"
+        remote_src: yes
+        mode: '0755'
+
+    - name: Get latest stable kubectl version
+      shell: "curl -L -s https://dl.k8s.io/release/stable.txt"
+      register: kubectl_version
+
+    - name: Download kubectl binary
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version.stdout }}/bin/linux/amd64/kubectl"
+        dest: /tmp/kubectl
+        mode: '0755'
+
+    - name: Move kubectl binary to /usr/local/bin
+      copy:
+        src: /tmp/kubectl
+        dest: "{{ kubectl_bin_path }}"
+        remote_src: yes
+        mode: '0755'
+
+    - name: Start Minikube
+      become: false
+      shell: minikube start
+      environment:
+        CHANGE_MINIKUBE_NONE_USER: "true"
+      args:
+        creates: ~/.minikube
+
+    - name: Wait for Minikube to be ready
+      become: false
+      shell: minikube status | grep -q Running
+
+    - name: Check Minikube status
+      become: false
+      shell: minikube status
+      register: minikube_status
+      ignore_errors: true
+
+    - name: Expose test-app-deployment as NodePort service
+      become: false
+      shell: kubectl expose deployment test-app-deployment --type=NodePort --name=test-app-service
+      args:
+        creates: /tmp/test-app-service-exposed
+
+    - name: Get test-app-service URL
+      become: false
+      shell: minikube service test-app-service --url
+      register: service_url
+      ignore_errors: true
+
+    - name: Port forward test-app-service to localhost:3000
+      become: false
+      shell: "nohup kubectl port-forward svc/test-app-service {{ test_app_service_port }}:{{ test_app_service_port }} --address 0.0.0.0 &"
+      async: 10
+      poll: 0
+      ignore_errors: true
+
+    - name: Rollout restart test-app-deployment
+      become: false
+      shell: kubectl rollout restart deployment test-app-deployment
+      register: rollout_restart
+      ignore_errors: true
+
+    - name: Show test-app-service URL
+      debug:
+        msg: "App accessible at: {{ service_url.stdout | default('Check manually with minikube service test-app-service --url') }}"
