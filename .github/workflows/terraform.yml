@@ -1,4 +1,4 @@
-name: Full Infra + Deploy Pipeline
+name: Provision Infrastructure, Configure & Deploy
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - '**/*.tf'
       - '**/terraform.yml'
       - '**/terraform/**'
-      - 'ansible-playbook.yml'
+      - '**/ansible/**'
+      - '**/docker/**'
+      - '**/k8s/**'
       - 'dockerfile/**'
-      - 'k8s/**'
-      - 'docker-k8s-deploy.yml'
   workflow_dispatch:
     inputs:
       action:
@@ -58,8 +58,7 @@ jobs:
       - name: Output public IP
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         id: output
-        run: |
-          echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+        run: echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
 
       - name: Save public IP as artifact
         run: echo "${{ steps.output.outputs.SERVER_IP }}" > server_ip.txt
@@ -72,6 +71,7 @@ jobs:
 
   ansible:
     needs: terraform
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     runs-on: ubuntu-latest
 
     steps:
@@ -81,19 +81,20 @@ jobs:
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
 
-      - name: Set up SSH key and known_hosts
+      - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ needs.terraform.outputs.server_ip }} >> ~/.ssh/known_hosts
 
-      - name: Run Ansible Playbook
+      - name: Run Ansible Install Playbook
         run: |
           ansible-playbook -i "${{ needs.terraform.outputs.server_ip }}," ansible-playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
 
   deploy:
     needs: ansible
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     runs-on: ubuntu-latest
 
     steps:
@@ -111,14 +112,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up SSH key and known_hosts
+      - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ steps.serverip.outputs.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: Clone App Repo on remote
+      - name: Clone app repo on remote
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             git clone https://github.com/dheerendrabhandari8/terraform_assignment.git /home/ubuntu/terraform_assignment || true"
@@ -131,8 +132,7 @@ jobs:
       - name: Build & Push Docker image on remote
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            cd /home/ubuntu/terraform_assignment && \
-            docker build -t dheerendrabhandari/nodejsapp:latest -f dockerfile/Dockerfile . && \
+            docker build -t dheerendrabhandari/nodejsapp:latest -f docker/Dockerfile /home/ubuntu/terraform_assignment && \
             docker push dheerendrabhandari/nodejsapp:latest"
 
       - name: Start Minikube on remote
@@ -140,25 +140,21 @@ jobs:
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             minikube start --driver=docker || true"
 
-      - name: Deploy Ingress controller (using Helm)
+      - name: Deploy Ingress Controller (Helm)
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx && \
             helm repo update && \
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx"
 
-      - name: Deploy Kubernetes deployment and service
+      - name: Deploy Kubernetes manifests (deployment.yaml, service.yaml, ingress.yaml)
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            kubectl apply -f /home/ubuntu/terraform_assignment/k8s/deployment.yaml && \
-            kubectl apply -f /home/ubuntu/terraform_assignment/k8s/service.yaml"
+            kubectl apply -f /home/ubuntu/terraform_assignment/deployment.yaml && \
+            kubectl apply -f /home/ubuntu/terraform_assignment/service.yaml && \
+            kubectl apply -f /home/ubuntu/terraform_assignment/ingress.yaml"
 
-      - name: Deploy Kubernetes ingress
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            kubectl apply -f /home/ubuntu/terraform_assignment/k8s/ingress.yaml"
-
-      - name: Expose test-app-deployment as NodePort service
+      - name: Expose test-app deployment as NodePort service
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             kubectl expose deployment test-app-deployment --type=NodePort --name=test-app-service || true"
