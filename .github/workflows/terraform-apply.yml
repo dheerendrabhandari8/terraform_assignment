@@ -1,7 +1,6 @@
 on:
-  push:          # <-- This will trigger the workflow automatically on every push
-    branches:
-      - main     # <-- Change or add branches as needed
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       action:
@@ -14,13 +13,16 @@ on:
           - destroy
 
 jobs:
-  infra-and-install:
+  terraform:
     runs-on: ubuntu-latest
 
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'ap-south-1' }}
+
+    outputs:
+      server_ip: ${{ steps.output.outputs.SERVER_IP }}
 
     steps:
       - name: Checkout repository
@@ -50,19 +52,25 @@ jobs:
         run: |
           echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
 
+  ansible:
+    needs: terraform
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install Ansible
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: sudo apt-get update && sudo apt-get install -y ansible
 
       - name: Set up SSH key
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ steps.output.outputs.SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ needs.terraform.outputs.server_ip }} >> ~/.ssh/known_hosts
 
       - name: Run Ansible Install Playbook
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: |
-          ansible-playbook -i "${{ steps.output.outputs.SERVER_IP }}," ansible-playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
+          ansible-playbook -i "${{ needs.terraform.outputs.server_ip }}," ansible-playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
