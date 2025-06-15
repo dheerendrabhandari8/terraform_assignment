@@ -52,6 +52,13 @@
         groups: docker
         append: yes
 
+    - name: Refresh new group membership for {{ docker_user }}
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: newgrp docker <<EOF
+true
+EOF
+
     - name: Download Minikube binary
       get_url:
         url: "{{ minikube_url }}"
@@ -83,44 +90,51 @@
         mode: '0755'
 
     - name: Start Minikube
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: minikube start
       environment:
         CHANGE_MINIKUBE_NONE_USER: "true"
       args:
-        creates: ~/.minikube
+        creates: /home/{{ docker_user }}/.minikube
 
     - name: Wait for Minikube to be ready
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: minikube status | grep -q Running
 
     - name: Check Minikube status
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: minikube status
       register: minikube_status
       ignore_errors: true
 
     - name: Expose test-app-deployment as NodePort service
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: kubectl expose deployment test-app-deployment --type=NodePort --name=test-app-service
       args:
         creates: /tmp/test-app-service-exposed
 
     - name: Get test-app-service URL
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: minikube service test-app-service --url
       register: service_url
       ignore_errors: true
 
     - name: Port forward test-app-service to localhost:3000
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: "nohup kubectl port-forward svc/test-app-service {{ test_app_service_port }}:{{ test_app_service_port }} --address 0.0.0.0 &"
       async: 10
       poll: 0
       ignore_errors: true
 
     - name: Rollout restart test-app-deployment
-      become: false
+      become: true
+      become_user: "{{ docker_user }}"
       shell: kubectl rollout restart deployment test-app-deployment
       register: rollout_restart
       ignore_errors: true
