@@ -1,17 +1,20 @@
 on:
+  push:          # <-- This will trigger the workflow automatically on every push
+    branches:
+      - main     # <-- Change or add branches as needed
   workflow_dispatch:
     inputs:
       action:
-        description: "Terraform action to perform (apply or destroy)"
+        description: 'Terraform action: apply or destroy'
         required: true
-        default: "apply"
+        default: 'apply'
         type: choice
         options:
           - apply
           - destroy
 
 jobs:
-  terraform:
+  infra-and-install:
     runs-on: ubuntu-latest
 
     env:
@@ -30,45 +33,36 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: terraform apply -auto-approve tfplan
 
       - name: Terraform Destroy
-        if: ${{ github.event.inputs.action == 'destroy' }}
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
         run: terraform destroy -auto-approve
 
       - name: Output public IP
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         id: output
         run: |
           echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
 
-    outputs:
-      server_ip: ${{ steps.output.outputs.SERVER_IP }}
-
-  ansible-install:
-    needs: terraform
-    if: ${{ github.event.inputs.action == 'apply' }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Install Ansible
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: sudo apt-get update && sudo apt-get install -y ansible
 
       - name: Set up SSH key
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ needs.terraform.outputs.server_ip }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ steps.output.outputs.SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: Run Ansible Install Playbook
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: |
-          ansible-playbook -i "${{ needs.terraform.outputs.server_ip }}," ansible-playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
+          ansible-playbook -i "${{ steps.output.outputs.SERVER_IP }}," ansible-playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
