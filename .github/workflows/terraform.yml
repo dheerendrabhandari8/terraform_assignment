@@ -1,14 +1,11 @@
-name: Provision and Deploy App
+name: Provision and Deploy Infrastructure
 
 on:
   push:
     paths:
       - '**/*.tf'
-      - '**/terraform.yml'
+      - 'terraform.yml'
       - '**/terraform/**'
-      - '**/ansible-playbook.yml'
-      - '**/docker/**'
-      - '.github/workflows/terraform.yml'
   workflow_dispatch:
     inputs:
       action:
@@ -23,59 +20,64 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    outputs:
-      server_ip: ${{ steps.output.outputs.SERVER_IP }}
 
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'ap-south-1' }}
 
+    outputs:
+      server_ip: ${{ steps.output.outputs.SERVER_IP }}
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init
 
       - name: Terraform Plan
-        if: github.event.inputs.action == 'apply' || github.event_name == 'push'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        if: github.event.inputs.action == 'apply' || github.event_name == 'push'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: terraform apply -auto-approve tfplan
 
       - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
         run: terraform destroy -auto-approve
 
       - name: Output public IP
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         id: output
-        if: github.event.inputs.action == 'apply' || github.event_name == 'push'
-        run: |
-          echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+        run: echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
 
   ansible:
     needs: terraform
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
 
-      - name: Setup SSH
+      - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ needs.terraform.outputs.server_ip }} >> ~/.ssh/known_hosts
+          SERVER_IP="${{ needs.terraform.outputs.server_ip }}"
+          if [ -z "$SERVER_IP" ]; then
+            echo "Server IP is empty. Exiting."
+            exit 1
+          fi
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
       - name: Run Ansible Playbook
         run: |
@@ -86,38 +88,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH
+      - name: Set up SSH
         run: |
-          mkdir -p ~/.ssh
+#          mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ needs.terraform.outputs.server_ip }} >> ~/.ssh/known_hosts
+          SERVER_IP="${{ needs.terraform.outputs.server_ip }}"
+          if [ -z "$SERVER_IP" ]; then
+            echo "Server IP is empty. Exiting."
+            exit 1
+          fi
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
-      - name: Clone repo on remote
+      - name: Clone App Repo on Remote
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
-            git clone https://github.com/dheerendrabhandari8/terraform_assignment.git || true"
+            git clone https://github.com/dheerendrabhandari8/terraform_assignment.git /home/ubuntu/terraform_assignment || true"
 
-      - name: Docker login on remote
+      - name: Docker login
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin"
 
-      - name: Build & Push Docker image
+      - name: Build & Push Docker Image
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
-            docker build -t dheerendrabhandari/nodejsapp:latest \
-              -f /home/ubuntu/terraform_assignment/docker/Dockerfile \
-              /home/ubuntu/terraform_assignment/docker && \
+            docker build -t dheerendrabhandari/nodejsapp:latest -f /home/ubuntu/terraform_assignment/docker/Dockerfile /home/ubuntu/terraform_assignment/docker && \
             docker push dheerendrabhandari/nodejsapp:latest"
 
       - name: Start Minikube
         run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
-            minikube start --driver=docker || true"
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "minikube start --driver=docker"
 
       - name: Deploy Ingress Controller
         run: |
@@ -126,12 +130,12 @@ jobs:
             helm repo update && \
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx"
 
-      - name: Apply Kubernetes Manifests
+      - name: Deploy Kubernetes Manifests
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
             kubectl apply -f /home/ubuntu/terraform_assignment/k8s/"
 
-      - name: Expose Service (NodePort)
+      - name: Expose NodePort Service
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
             kubectl expose deployment test-app-deployment --type=NodePort --name=test-app-service || true"
@@ -140,9 +144,4 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
             minikube service test-app-service --url || true"
-
-      - name: Port Forward service
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ needs.terraform.outputs.server_ip }} "\
-            nohup kubectl port-forward svc/test-app-service 3000:3000 --address 0.0.0.0 &"
 
