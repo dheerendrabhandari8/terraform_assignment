@@ -52,6 +52,27 @@
         groups: docker
         append: yes
 
+    - name: Restart Docker to ensure changes take effect
+      systemd:
+        name: docker
+        state: restarted
+        enabled: true
+
+    - name: Refresh group membership for docker_user (non-persistent workaround)
+      shell: newgrp docker
+      become: true
+      become_user: "{{ docker_user }}"
+      args:
+        executable: /bin/bash
+      ignore_errors: true
+
+    - name: Verify docker access for {{ docker_user }}
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: docker version
+      register: docker_check
+      failed_when: docker_check.rc != 0
+
     - name: Download Minikube binary
       get_url:
         url: "{{ minikube_url }}"
@@ -135,3 +156,4 @@
     - name: Show test-app-service URL
       debug:
         msg: "App accessible at: {{ service_url.stdout | default('Check manually with minikube service test-app-service --url') }}"
+
