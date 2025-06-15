@@ -8,7 +8,7 @@
     kubectl_bin_path: "/usr/local/bin/kubectl"
     minikube_url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
     test_app_service_port: 3000
-    docker_user: "ubuntu"   # Change this if you want a different user added to docker group
+    docker_user: "ubuntu"   # Change this if you want a different user
 
   tasks:
     - name: Update apt cache
@@ -51,13 +51,6 @@
         name: "{{ docker_user }}"
         groups: docker
         append: yes
-
-    - name: Refresh new group membership for {{ docker_user }}
-      become: true
-      become_user: "{{ docker_user }}"
-      shell: newgrp docker <<EOF
-true
-EOF
 
     - name: Download Minikube binary
       get_url:
