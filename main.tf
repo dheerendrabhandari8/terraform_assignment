@@ -62,14 +62,20 @@ resource "aws_security_group" "allow_ports" {
 
 resource "aws_instance" "example" {
   ami                    = "ami-021a584b49225376d" # Make sure this is valid for ap-south-1
-  instance_type          = "t2.micro"
+  instance_type          = "t2.medium"
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.allow_ports.id]
+
+  root_block_device {
+    volume_size = 15
+    volume_type = "gp2"
+  }
 
   tags = {
     Name = "Instance"
   }
 }
+
 output "public_ip" {
   value = aws_instance.example.public_ip
 }
