@@ -8,7 +8,7 @@
     kubectl_bin_path: "/usr/local/bin/kubectl"
     minikube_url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
     test_app_service_port: 3000
-    docker_user: "ubuntu"   # Change this if you want a different user
+    docker_user: "ubuntu"   # Change this if needed
 
   tasks:
     - name: Update apt cache
@@ -52,19 +52,11 @@
         groups: docker
         append: yes
 
-    - name: Restart Docker to ensure changes take effect
+    - name: Restart Docker to ensure group change takes effect
       systemd:
         name: docker
         state: restarted
         enabled: true
-
-    - name: Refresh group membership for docker_user (non-persistent workaround)
-      shell: newgrp docker
-      become: true
-      become_user: "{{ docker_user }}"
-      args:
-        executable: /bin/bash
-      ignore_errors: true
 
     - name: Verify docker access for {{ docker_user }}
       become: true
@@ -131,29 +123,5 @@
       args:
         creates: /tmp/test-app-service-exposed
 
-    - name: Get test-app-service URL
-      become: true
-      become_user: "{{ docker_user }}"
-      shell: minikube service test-app-service --url
-      register: service_url
-      ignore_errors: true
-
-    - name: Port forward test-app-service to localhost:3000
-      become: true
-      become_user: "{{ docker_user }}"
-      shell: "nohup kubectl port-forward svc/test-app-service {{ test_app_service_port }}:{{ test_app_service_port }} --address 0.0.0.0 &"
-      async: 10
-      poll: 0
-      ignore_errors: true
-
-    - name: Rollout restart test-app-deployment
-      become: true
-      become_user: "{{ docker_user }}"
-      shell: kubectl rollout restart deployment test-app-deployment
-      register: rollout_restart
-      ignore_errors: true
-
-    - name: Show test-app-service URL
-      debug:
-        msg: "App accessible at: {{ service_url.stdout | default('Check manually with minikube service test-app-service --url') }}"
+    - name: Get test-app-s
 
