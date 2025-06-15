@@ -1,7 +1,11 @@
-name: terraform.yml
+name: Provision Infrastructure with Terraform
+
 on:
   push:
-    branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/terraform.yml'
+      - '**/terraform/**'
   workflow_dispatch:
     inputs:
       action:
@@ -52,6 +56,15 @@ jobs:
         id: output
         run: |
           echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+
+      - name: Save public IP as artifact
+        run: echo "${{ steps.output.outputs.SERVER_IP }}" > server_ip.txt
+
+      - name: Upload server IP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-ip
+          path: server_ip.txt
 
   ansible:
     needs: terraform

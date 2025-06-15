@@ -1,6 +1,8 @@
+name: Docker & Kubernetes Deploy
+
 on:
   workflow_run:
-    workflows: ["terraform.yml"] # Must exactly match the Terraform workflow filename
+    workflows: ["Provision Infrastructure with Terraform"]
     types:
       - completed
 
@@ -79,3 +81,4 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             nohup kubectl port-forward svc/test-app-service 3000:3000 --address 0.0.0.0 &"
+
