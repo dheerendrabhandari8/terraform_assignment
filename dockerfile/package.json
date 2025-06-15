@@ -1,0 +1,13 @@
+{
+  "name": "api-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "chalk": "^4.1.2",
+    "gradient-string": "^2.0.2"
+  }
+}

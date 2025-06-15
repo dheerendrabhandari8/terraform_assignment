@@ -1,14 +1,21 @@
 ---
-- name: Setup Docker, Minikube, and Deploy Kubernetes App
+- name: Setup Docker, Minikube, Build & Deploy Kubernetes App
   hosts: all
   become: true
 
   vars:
     minikube_bin_path: "/usr/local/bin/minikube"
     kubectl_bin_path: "/usr/local/bin/kubectl"
+    helm_bin_path: "/usr/local/bin/helm"
     minikube_url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+    helm_url: "https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz"
+    docker_user: "ubuntu"
+    docker_repo: "dheerendrabhandari/nodejsapp" # <-- Change if needed
+    docker_app_repo: "https://github.com/dheerendrabhandari8/terraform_assignment.git"
+    docker_app_dir: "/home/ubuntu/terraform_assignment"
+    dockerfile_dir: "dockerfile"  # relative to app dir
+    dockerfile_name: "Dockerfile"
     test_app_service_port: 3000
-    docker_user: "ubuntu"   # Change if needed
 
   tasks:
     - name: Update apt cache
@@ -59,6 +66,12 @@
         state: restarted
         enabled: true
 
+    - name: Verify docker access for {{ docker_user }}
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: docker version
+      register: docker_check
+      failed_when: docker_check.rc != 0
 
     - name: Download Minikube binary
       get_url:
@@ -90,6 +103,58 @@
         remote_src: yes
         mode: '0755'
 
+    # Install Helm
+    - name: Download Helm
+      get_url:
+        url: "{{ helm_url }}"
+        dest: /tmp/helm-linux-amd64.tar.gz
+        mode: '0644'
+
+    - name: Extract Helm binary
+      unarchive:
+        src: /tmp/helm-linux-amd64.tar.gz
+        dest: /tmp/
+        remote_src: yes
+        creates: /tmp/linux-amd64/helm
+
+    - name: Move Helm binary to /usr/local/bin
+      copy:
+        src: /tmp/linux-amd64/helm
+        dest: "{{ helm_bin_path }}"
+        remote_src: yes
+        mode: '0755'
+
+    # Clone the app repo and build/push Docker image
+    - name: Clone app repo
+      become: true
+      become_user: "{{ docker_user }}"
+      git:
+        repo: "{{ docker_app_repo }}"
+        dest: "{{ docker_app_dir }}"
+        update: yes
+
+    - name: Log in to Docker Hub
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: echo "{{ lookup('env','DOCKER_PASSWORD') }}" | docker login --username "{{ lookup('env','DOCKER_USERNAME') }}" --password-stdin
+      environment:
+        DOCKER_USERNAME: "{{ lookup('env','DOCKER_USERNAME') }}"
+        DOCKER_PASSWORD: "{{ lookup('env','DOCKER_PASSWORD') }}"
+      no_log: true
+
+    - name: Build Docker image using Dockerfile in {{ dockerfile_dir }}
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: docker build -t {{ docker_repo }}:latest -f {{ dockerfile_dir }}/{{ dockerfile_name }} .
+      args:
+        chdir: "{{ docker_app_dir }}"
+
+    - name: Push Docker image to Docker Hub
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: docker push {{ docker_repo }}:latest
+
+    # Minikube Start and Deployments
     - name: Start Minikube
       become: true
       become_user: "{{ docker_user }}"
@@ -104,11 +169,22 @@
       become_user: "{{ docker_user }}"
       shell: minikube status | grep -q Running
 
-    - name: Check Minikube status
+    # Apply Kubernetes manifests (deploy, svc, ingress) from app repo
+    - name: Deploy app with kubectl
       become: true
       become_user: "{{ docker_user }}"
-      shell: minikube status
-      register: minikube_status
+      shell: kubectl apply -f k8s/
+      args:
+        chdir: "{{ docker_app_dir }}"
+      ignore_errors: true
+
+    - name: Deploy Ingress controller (using Helm)
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: |
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
       ignore_errors: true
 
     - name: Expose test-app-deployment as NodePort service
@@ -144,4 +220,3 @@
     - name: Show test-app-service URL
       debug:
         msg: "App accessible at: {{ service_url.stdout | default('Check manually with minikube service test-app-service --url') }}"
-
