@@ -1,5 +1,3 @@
-name: Terraform & Minikube-Docker Deploy
-
 on:
   push:
     branches: [ main ]
@@ -52,11 +50,10 @@ jobs:
     outputs:
       server_ip: ${{ steps.output.outputs.SERVER_IP }}
 
-  setup-k8s:
+  deploy-nginx:
     needs: terraform-apply
-    if: needs.terraform-apply.result == 'success' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,61 +64,13 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          printf "%s\n" "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ needs.terraform-apply.outputs.server_ip }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
 
-      - name: Run Ansible Playbook for Docker and Minikube
+      - name: Run Ansible Playbook
         run: |
-          cat > minikube-docker.yml <<'EOF'
-          - hosts: all
-            become: yes
-            tasks:
-              - name: Install dependencies for minikube and docker
-                apt:
-                  name:
-                    - apt-transport-https
-                    - ca-certificates
-                    - curl
-                    - gnupg
-                    - lsb-release
-                    - software-properties-common
-                  state: present
-                  update_cache: yes
-
-              - name: Install Docker
-                shell: |
-                  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-                  add-apt-repository \
-                    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-                    $(lsb_release -cs) \
-                    stable"
-                  apt-get update
-                  apt-get install -y docker-ce docker-ce-cli containerd.io
-                args:
-                  warn: false
-
-              - name: Add ubuntu user to docker group
-                user:
-                  name: ubuntu
-                  groups: docker
-                  append: yes
-
-              - name: Download Minikube
-                get_url:
-                  url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-                  dest: /usr/local/bin/minikube
-                  mode: '0755'
-
-              - name: Ensure Minikube is executable
-                file:
-                  path: /usr/local/bin/minikube
-                  mode: '0755'
-                  owner: root
-                  group: root
-                  state: file
-          EOF
-          ansible-playbook -i "${{ needs.terraform-apply.outputs.server_ip }}," minikube-docker.yml -u ubuntu --private-key ~/.ssh/id_rsa
+          ansible-playbook -i "${{ needs.terraform-apply.outputs.server_ip }}," nginx.yml -u ubuntu --private-key ~/.ssh/id_rsa
 
   terraform-destroy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
