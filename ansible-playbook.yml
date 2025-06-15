@@ -1,0 +1,118 @@
+---
+- name: Install Docker, Minikube, kubectl, and Helm
+  hosts: all
+  become: true
+
+  vars:
+    minikube_bin_path: "/usr/local/bin/minikube"
+    kubectl_bin_path: "/usr/local/bin/kubectl"
+    helm_bin_path: "/usr/local/bin/helm"
+    minikube_url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+    helm_url: "https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz"
+    docker_user: "ubuntu"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install base dependencies (including git)
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - wget
+          - git
+        state: present
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker is started and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add user to docker group
+      user:
+        name: "{{ docker_user }}"
+        groups: docker
+        append: yes
+
+    - name: Restart Docker to ensure group change takes effect
+      systemd:
+        name: docker
+        state: restarted
+        enabled: true
+
+    - name: Verify docker access for {{ docker_user }}
+      become: true
+      become_user: "{{ docker_user }}"
+      shell: docker version
+      register: docker_check
+      failed_when: docker_check.rc != 0
+
+    - name: Download Minikube binary
+      get_url:
+        url: "{{ minikube_url }}"
+        dest: /tmp/minikube-linux-amd64
+        mode: '0755'
+
+    - name: Move Minikube binary to /usr/local/bin
+      copy:
+        src: /tmp/minikube-linux-amd64
+        dest: "{{ minikube_bin_path }}"
+        remote_src: yes
+        mode: '0755'
+
+    - name: Get latest stable kubectl version
+      shell: "curl -L -s https://dl.k8s.io/release/stable.txt"
+      register: kubectl_version
+
+    - name: Download kubectl binary
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version.stdout }}/bin/linux/amd64/kubectl"
+        dest: /tmp/kubectl
+        mode: '0755'
+
+    - name: Move kubectl binary to /usr/local/bin
+      copy:
+        src: /tmp/kubectl
+        dest: "{{ kubectl_bin_path }}"
+        remote_src: yes
+        mode: '0755'
+
+    - name: Download Helm
+      get_url:
+        url: "{{ helm_url }}"
+        dest: /tmp/helm-linux-amd64.tar.gz
+        mode: '0644'
+
+    - name: Extract Helm binary
+      unarchive:
+        src: /tmp/helm-linux-amd64.tar.gz
+        dest: /tmp/
+        remote_src: yes
+        creates: /tmp/linux-amd64/helm
+
+    - name: Move Helm binary to /usr/local/bin
+      copy:
+        src: /tmp/linux-amd64/helm
+        dest: "{{ helm_bin_path }}"
+        remote_src: yes
+        mode: '0755'

@@ -50,9 +50,8 @@ jobs:
     outputs:
       server_ip: ${{ steps.output.outputs.SERVER_IP }}
 
-  deploy-minikube-k8s-app:
+  install-dependencies:
     needs: terraform-apply
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -68,13 +67,20 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
 
-      # Pass Docker Hub credentials as environment variables to Ansible
-      - name: Run Ansible Playbook
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Run Ansible Install Playbook
         run: |
-          ansible-playbook -i "${{ needs.terraform-apply.outputs.server_ip }}," minikube_k8s_app.yml -u ubuntu --private-key ~/.ssh/id_rsa
+          ansible-playbook -i "${{ needs.terraform-apply.outputs.server_ip }}," install_dependencies.yml -u ubuntu --private-key ~/.ssh/id_rsa
+
+      # Trigger next workflow
+      - name: Trigger docker-build-and-k8s pipeline
+        uses: peter-evans/workflow-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          workflow: docker-build-and-k8s.yml
+          ref: ${{ github.ref }}
+          inputs: |
+            server_ip: ${{ needs.terraform-apply.outputs.server_ip }}
 
   terraform-destroy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
