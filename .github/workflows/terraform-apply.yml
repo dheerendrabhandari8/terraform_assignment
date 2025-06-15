@@ -71,16 +71,12 @@ jobs:
         run: |
           ansible-playbook -i "${{ needs.terraform-apply.outputs.server_ip }}," install_dependencies.yml -u ubuntu --private-key ~/.ssh/id_rsa
 
-      # Trigger next workflow
+      # Trigger docker-build-and-k8s pipeline via repository_dispatch (no token needed as this is your own repo and with GITHUB_TOKEN)
       - name: Trigger docker-build-and-k8s pipeline
-        uses: peter-evans/workflow-dispatch@v1
-        with:
-          token: ${{ secrets.TOKEN }}
-          repository: ${{ github.repository }}
-          workflow: docker-build-and-k8s.yml
-          ref: ${{ github.ref }}
-          inputs: |
-            server_ip: ${{ needs.terraform-apply.outputs.server_ip }}
+        run: |
+          gh workflow run docker-build-and-k8s.yml --ref ${{ github.ref }} -f server_ip=${{ needs.terraform-apply.outputs.server_ip }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   terraform-destroy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
