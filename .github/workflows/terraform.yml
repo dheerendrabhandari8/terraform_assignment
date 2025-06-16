@@ -149,7 +149,7 @@ jobs:
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx && \
             helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && \
             helm repo update && \
-            helm upgrade --install prometheus prometheus-community/prometheu && \
+            helm upgrade --install prometheus prometheus-community/prometheus && \
             helm repo add grafana https://grafana.github.io/helm-charts && \
             helm repo update && \
             helm upgrade --install grafana grafana/grafana"
