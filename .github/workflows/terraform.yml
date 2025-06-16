@@ -160,7 +160,13 @@ jobs:
       - name: Apply Kubernetes deployment yaml file
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-             kubectl rollout restart deployment test-app-deployment"
+            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f deployment.yaml"
+
+      - name: Update deployment with latest image
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+          kubectl set image deployment/test-app-deployment test-app=dheerendrabhandari/nodejsapp:latest"
+
 
       - name: Apply Kubernetes service yaml file
         run: |
