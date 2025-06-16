@@ -10,8 +10,9 @@ helm upgrade --install prometheus prometheus-community/prometheus \
 # 3. Expose Prometheus on port 9090 (forwards to service's internal port 9090)
 kubectl port-forward svc/prometheus-server 9090:80 --address 0.0.0.0 &
 
+helm upgrade --install grafana grafana/grafana \
+  --set service.type=NodePort \
+  --set service.nodePort=30800 \
+  --set service.port=3000
 
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-helm install grafana grafana/grafana
 kubectl port-forward svc/grafana 3000:80 --address 0.0.0.0 &
