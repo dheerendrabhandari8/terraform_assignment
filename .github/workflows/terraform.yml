@@ -159,15 +159,14 @@ jobs:
 
       - name: Apply Kubernetes deployment yaml file
         run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }}
-          # kubectl apply -f /home/ubuntu/terraform_assignment/deployment.yaml
-          cd /home/ubuntu/terraform_assignment/ && kubectl apply -f deployment.yaml
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f deployment.yaml"
 
       - name: Apply Kubernetes service yaml file
         run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }}
-            kubectl apply -f /home/ubuntu/terraform_assignment/service.yaml      
-      
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  service.yaml"
+                                                                                                                                
 
 
       - name: Expose test-app-deployment as NodePort service
