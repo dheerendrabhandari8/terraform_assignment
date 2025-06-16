@@ -149,7 +149,7 @@ jobs:
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx && \
             helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && \
             helm repo update && \
-            helm upgrade --install prometheus prometheus-community/prometheus && \
+            helm upgrade --install prometheus prometheus-community/prometheus   --set server.service.type=NodePort   --set server.service.nodePort=30900   --set server.service.port=9090 && \
             helm repo add grafana https://grafana.github.io/helm-charts && \
             helm repo update && \
             helm upgrade --install grafana grafana/grafana"
