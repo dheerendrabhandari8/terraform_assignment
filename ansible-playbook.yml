@@ -60,7 +60,6 @@
         state: restarted
         enabled: true
 
-
     - name: Download Minikube binary
       get_url:
         url: "{{ minikube_url }}"
@@ -110,3 +109,45 @@
         dest: "{{ helm_bin_path }}"
         remote_src: yes
         mode: '0755'
+
+    - name: Enable Docker service for user sessions
+      command: loginctl enable-linger {{ docker_user }}
+
+    - name: Allow iptables FORWARD policy for Minikube networking
+      iptables:
+        chain: FORWARD
+        policy: ACCEPT
+        table: filter
+        state: present
+
+    - name: Ensure iptables-persistent is installed for rule persistence
+      apt:
+        name: iptables-persistent
+        state: present
+
+    - name: Save iptables rules persistently
+      command: netfilter-persistent save
+
+    - name: Add Prometheus Helm repo
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      become: false
+
+    - name: Update Helm repos (for Prometheus)
+      command: helm repo update
+      become: false
+
+    - name: Install Prometheus with Helm
+      command: helm install prometheus prometheus-community/prometheus
+      become: false
+
+    - name: Add Grafana Helm repo
+      command: helm repo add grafana https://grafana.github.io/helm-charts
+      become: false
+
+    - name: Update Helm repos (for Grafana)
+      command: helm repo update
+      become: false
+
+    - name: Install Grafana with Helm
+      command: helm install grafana grafana/grafana
+      become: false
