@@ -181,11 +181,6 @@ jobs:
             kubectl expose deployment test-app-deployment --type=NodePort --name=test-app-service || true"
 
 
-          
-      - name: Expose test-app-deployment as NodePort service
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            helm upgrade --install prometheus prometheus-community/prometheus   --set server.service.type=NodePort   --set server.service.nodePort=30900 --set server.service.port=9090"
 
       - name: Port forward test-app-service to localhost:3000
         run: |
