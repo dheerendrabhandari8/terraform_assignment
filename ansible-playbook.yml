@@ -132,16 +132,9 @@
       command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
       become: false
 
-    - name: Update Helm repos (for Prometheus)
-      command: helm repo update
-      become: false
-
 
     - name: Add Grafana Helm repo
       command: helm repo add grafana https://grafana.github.io/helm-charts
       become: false
 
-    - name: Update Helm repos (for Grafana)
-      command: helm repo update
-      become: false
 
