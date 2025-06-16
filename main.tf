@@ -36,7 +36,7 @@ resource "aws_security_group" "allow_ports" {
   }
 
   ingress {
-    description = "App 3000"
+    description = "Grafana 3000"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
