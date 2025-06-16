@@ -3,9 +3,6 @@ name: Provision Infrastructure with Terraform and Deploy
 on:
   push:
     paths:
-      - '**/*.tf'
-      - '**/terraform.yml'
-      - '**/terraform/**'
   workflow_dispatch:
     inputs:
       action:
