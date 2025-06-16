@@ -151,11 +151,6 @@ jobs:
             helm repo update && \
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx"
 
-      - name: Apply Kubernetes ingress controller
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  ingress.yaml"
-            #kubectl apply -f /home/ubuntu/terraform_assignment/ingress.yaml
 
       - name: Apply Kubernetes deployment yaml file
         run: |
@@ -173,6 +168,14 @@ jobs:
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  service.yaml"
      
+
+      - name: Apply Kubernetes ingress controller
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  ingress.yaml"
+     
+     
+            #kubectl apply -f /home/ubuntu/terraform_assignment/ingress.yaml
 
             #- name: Apply Kubernetes service yaml file
             # run: |
