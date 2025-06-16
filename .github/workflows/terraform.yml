@@ -177,5 +177,5 @@ jobs:
       - name: Port forward test-app-service to localhost:3000
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-             cd /home/ubuntu/terraform_assignment && sh portForward.sh"
+             cd /home/ubuntu/terraform_assignment && sh portForward.sh &"
 
