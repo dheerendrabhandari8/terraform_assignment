@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: test-app
-        image: dheerendrabhandari/hello-node
+        image: dheerendrabhandari/nodejsapp
         ports:
         - containerPort: 3000
