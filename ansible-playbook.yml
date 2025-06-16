@@ -136,9 +136,6 @@
       command: helm repo update
       become: false
 
-    - name: Install Prometheus with Helm
-      command: helm install prometheus prometheus-community/prometheus
-      become: false
 
     - name: Add Grafana Helm repo
       command: helm repo add grafana https://grafana.github.io/helm-charts
@@ -148,6 +145,3 @@
       command: helm repo update
       become: false
 
-    - name: Install Grafana with Helm
-      command: helm install grafana grafana/grafana
-      become: false
