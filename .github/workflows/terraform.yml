@@ -152,27 +152,32 @@ jobs:
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx"
 
 
-      - name: Apply Kubernetes deployment yaml file
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f deployment.yaml"
+       - name: Apply Kubernetes deployment yaml file
+         run: |
+           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+                                                                           
+             cd /home/ubuntu/terraform_assignment/ && kubectl apply -f deployment.yaml"
 
       - name: Update deployment with latest image
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-          kubectl set image deployment/test-app-deployment test-app=dheerendrabhandari/nodejsapp:latest"
+            kubectl set image deployment/test-app-deployment test-app=dheerendrabhandari/nodejsapp:latest"
 
-
-      - name: Apply Kubernetes service yaml file
+      - name: Port forward test-app-service to localhost:3000
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  service.yaml"
-     
+            cd /home/ubuntu/terraform_assignment && nohup sh deploy.sh > deploy.log 2>&1 &"    
 
-      - name: Apply Kubernetes ingress controller
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  ingress.yaml"
+          #- name: Apply Kubernetes service yaml file
+          #  run: |
+          #  ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+          #   cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  service.yaml"
+            # 
+
+          # - name: Apply Kubernetes ingress controller
+          # run: |
+          #ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+          #  cd /home/ubuntu/terraform_assignment/ && kubectl apply -f  ingress.yaml"
      
      
             #kubectl apply -f /home/ubuntu/terraform_assignment/ingress.yaml
