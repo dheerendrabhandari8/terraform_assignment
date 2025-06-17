@@ -200,8 +200,8 @@ jobs:
             cd /home/ubuntu/terraform_assignment && nohup sh portForward-grafana.sh > portforward-grafana.log 2>&1 &"
 
 
-
-      - name: Port forward grafana
+      - name: Get Grafana admin password
         run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            sh /home/ubuntu/terraform_assignment/password.sh"
+          kubectl get secret --namespace default grafana \
+          -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
