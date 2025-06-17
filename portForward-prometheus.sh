@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+#
+sleep 15
 
 # 2. Deploy/Upgrade Prometheus with NodePort on 30900
 echo "Installing/upgrading Prometheus..."
