@@ -1,40 +1,47 @@
-Nodejs Application automatic deployment using Github Action, Kubernetes, Docker, Terraform, and ansible.
+Nodejs application automatic deployment using Github Action, Kubernetes, Docker, Terraform, minikube, and ansible.
 Imgage pdf: assignment.pdf
 Prerequsite: 
-Aws Account: Here I used aws as a ROOT account.
+Aws Account: Here AWS is used as a ROOT account.
 
-ec2-instance: t2-medium
-s3-bucket
-github account
+Pre-requisite:
 
-Required Tools to be install in this project
-Terraform
-ansible
-Docker
-Helm
-Minikube
+Ec2-instance: t2-medium
+S3-bucket
+Github account with repo
 
-setps: 
-created github repo
-created main.tf, and backend.tf file for terrafrom
-In terraform created one t2.medium ec2-instance with open required ports, and one s3-bucket file to store the terraform state file.
+Required Tools to be install in this project:
 
-created ansible.yml file
-Installed required tools this project
+- Terraform
+- Ansible
+- Docker
+- Helm
+- Minikube
 
-created terraform.yml file for github action
+Steps: 
+- Created github repo
+  
+- Created main.tf, and backend.tf file for terrafrom
+  In terraform created one t2.medium ec2-instance with open required ports, and one s3-bucket file to store the terraform state file.
 
-In github action I have created 3 stage 
-Named: 
-1- terraform- created ec2-instance and stored terraform state file in s3-bucket
-2- ansible- 
+- Created ansible.yml file
+  Installed required tools this project
+
+- Created terraform.yml file for github action
+
+In github action 3 stages has been created.
+Named As:
+
+1. terraform:
+- Created ec2-instance and stored terraform state file in s3-bucket
+
+2. ansible:
 - Update apt cache
-- installed base dependencies for docker
+- Installed base dependencies for docker
 - Add Docker GPG apt Key
 - Install Docker
 - Ensure Docker is started and enabled
 - Ensure docker group exists
-- estart Docker to ensure group change takes effect
+- Restart Docker to ensure group change takes effect
 - Download Minikube binary
 - Move Minikube binary to /usr/local/bin
 - Get latest stable kubectl version
@@ -47,11 +54,11 @@ Named:
 - Add Prometheus Helm repo
 - Add Grafana Helm repo
 
-3- docker_k8s_deploy: 
-- clone the repo
-- docker login
-- build and push the code in docker hub
-- start minikube
-- update deployment with latest image
-- apply ingress, app, deployment.yml, and service file
-- expose app, prometheus, and grafana with ports (3000, 3001, 9090)
+3. docker_k8s_deploy: 
+- Clone the repo
+- Docker login
+- Build and push the code in docker hub
+- Start minikube
+- Update deployment with latest image
+- Apply ingress, app, deployment.yml, and service file
+- Expose app, prometheus, and grafana with ports (3000, 3001, 9090)
