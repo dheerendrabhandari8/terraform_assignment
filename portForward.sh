@@ -1,5 +1,5 @@
 # 1. Expose test-app-service on port 3001
-kubectl port-forward svc/test-app-service 3001:3001 --address 0.0.0.0 &
+kubectl port-forward svc/test-app-service 31000:3001 --address 0.0.0.0
 
 # 2. Deploy/Upgrade Prometheus with desired NodePort and service port
 helm upgrade --install prometheus prometheus-community/prometheus \
@@ -15,4 +15,4 @@ helm upgrade --install grafana grafana/grafana \
   --set service.nodePort=30800 \
   --set service.port=3000
 
-kubectl port-forward svc/grafana 3000:80 --address 0.0.0.0 &
+kubectl port-forward svc/grafana 30800:3000 --address 0.0.0.0 &
