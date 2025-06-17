@@ -195,7 +195,7 @@ jobs:
          2>&1 &"
 
 
-       - name: Port forward grafana
+      - name: Port forward grafana
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             cd /home/ubuntu/terraform_assignment && nohup sh portForward-grafana.sh > portforward-grafana.log 2>&1 &"
