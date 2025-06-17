@@ -204,4 +204,4 @@ jobs:
       - name: Port forward grafana
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            sh /home/ubuntu/scripts/password.sh"
+            sh /home/ubuntu/terraform_assignment/password.sh"
