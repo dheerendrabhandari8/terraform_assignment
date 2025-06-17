@@ -1,7 +1,7 @@
 Nodejs Application automatic deployment using Github Action, Kubernetes, Docker, Terraform, and ansible.
 Imgage pdf: assignment.pdf
 Prerequsite: 
-Aws Account: Here I am using aws as a ROOT account.
+Aws Account: Here I used aws as a ROOT account.
 
 ec2-instance: t2-medium
 s3-bucket
