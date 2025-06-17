@@ -1,6 +1,6 @@
 **Nodejs application automatic deployment using Github Action, Kubernetes, Docker, Terraform, minikube, and ansible.**
 
-Image pdf: assignment.pdf
+Reference image pdf: assignment.pdf
 
 **Pre-requisite:** 
 
