@@ -185,4 +185,19 @@ jobs:
       - name: Port forward test-app-service to localhost:3000
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            cd /home/ubuntu/terraform_assignment && nohup sh portForward.sh > portforward.log 2>&1 &"
+            cd /home/ubuntu/terraform_assignment && nohup sh portForward-app.sh > portforward-app.log 2>&1 &"
+
+
+      - name: Port forward prometheus
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+            cd /home/ubuntu/terraform_assignment && nohup sh portForward-prometheus.sh > portforward-prometheus.log
+         2>&1 &"
+
+
+       - name: Port forward grafana
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+            cd /home/ubuntu/terraform_assignment && nohup sh portForward-grafana.sh > portforward-grafana.log 2>&1 &"
+
+
