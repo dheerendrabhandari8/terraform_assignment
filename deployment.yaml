@@ -19,5 +19,5 @@ spec:
         image: dheerendrabhandari/nodejsapp:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 3001
+        - containerPort: 3000
 
