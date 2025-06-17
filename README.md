@@ -1,15 +1,19 @@
-Nodejs application automatic deployment using Github Action, Kubernetes, Docker, Terraform, minikube, and ansible.
-Imgage pdf: assignment.pdf
-Prerequsite: 
+**Nodejs application automatic deployment using Github Action, Kubernetes, Docker, Terraform, minikube, and ansible.**
+
+Image pdf: assignment.pdf
+
+**Pre-requisite:** 
+
 Aws Account: Here AWS is used as a ROOT account.
 
-Pre-requisite:
 
 Ec2-instance: t2-medium
+
 S3-bucket
+
 Github account with repo
 
-Required Tools to be install in this project:
+**Required Tools to be install in this project:**
 
 - Terraform
 - Ansible
@@ -17,24 +21,27 @@ Required Tools to be install in this project:
 - Helm
 - Minikube
 
-Steps: 
+**Steps:**
 - Created github repo
   
-- Created main.tf, and backend.tf file for terrafrom
+- Created main.tf, and backend.tf file for terraform.
+  
   In terraform created one t2.medium ec2-instance with open required ports, and one s3-bucket file to store the terraform state file.
 
-- Created ansible.yml file
-  Installed required tools this project
+- Created ansible.yml file.
+  
+  Installed required tools this project.
 
 - Created terraform.yml file for github action
 
 In github action 3 stages has been created.
-Named As:
 
-1. terraform:
+**Named As:**
+
+**1. terraform:**
 - Created ec2-instance and stored terraform state file in s3-bucket
 
-2. ansible:
+**2. ansible:**
 - Update apt cache
 - Installed base dependencies for docker
 - Add Docker GPG apt Key
@@ -54,7 +61,7 @@ Named As:
 - Add Prometheus Helm repo
 - Add Grafana Helm repo
 
-3. docker_k8s_deploy: 
+**3. docker_k8s_deploy:**
 - Clone the repo
 - Docker login
 - Build and push the code in docker hub
