@@ -21,10 +21,8 @@
         name:
           - apt-transport-https
           - ca-certificates
-          - curl
           - software-properties-common
-          - wget
-          - git
+         
         state: present
 
     - name: Add Docker GPG apt Key
