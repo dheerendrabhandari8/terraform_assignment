@@ -166,8 +166,8 @@ jobs:
       - name: Update deployment with latest image
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
-            kubectl set image deployment/test-app-deployment test-app=dheerendrabhandari/nodejsapp:latest"
-
+          kubectl set image deployment/test-app-deployment test-app=dheerendrabhandari/nodejsapp:latest && \
+          kubectl rollout status deployment/test-app-deployment"
 
       - name: Apply ingress and service yaml file
         run: |
