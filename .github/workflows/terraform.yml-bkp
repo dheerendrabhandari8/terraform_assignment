@@ -120,6 +120,10 @@ jobs:
           fi
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
+      - name: Clone App Repo on remote
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
+            git clone https://github.com/dheerendrabhandari8/terraform_assignment.git /home/ubuntu/terraform_assignment || true"
 
       - name: Docker login on remote
         run: |
@@ -130,14 +134,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "\
             docker build -t dheerendrabhandari/nodejsapp:latest -f /home/ubuntu/terraform_assignment/dockerfile/Dockerfile /home/ubuntu/terraform_assignment/dockerfile && \
- 
-
-      - name: Ensure folder exists and copy files
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.serverip.outputs.SERVER_IP }} "mkdir -p /home/ubuntu/terraform_assignment/app"
-          scp -i ~/.ssh/id_rsa terraform_assignment/*.sh ubuntu@${{ steps.serverip.outputs.SERVER_IP }}:/home/ubuntu/terraform_assignment
-          scp -i ~/.ssh/id_rsa terraform_assignment/*.yml ubuntu@${{ steps.serverip.outputs.SERVER_IP }}:/home/ubuntu/terraform_assignment/
-
+            docker push dheerendrabhandari/nodejsapp:latest"
 
       - name: Start Minikube on remote
         run: |
