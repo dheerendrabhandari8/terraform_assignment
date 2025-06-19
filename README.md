@@ -68,4 +68,5 @@ In github action 3 stages has been created.
 - Start minikube
 - Update deployment with latest image
 - Apply ingress, app, deployment.yml, and service file
-- Expose app, prometheus, and grafana with ports (3000, 3001, 9090).
+- Expose app, prometheus, and grafana with ports (3000, 3001, 9090)G.i
+final test
