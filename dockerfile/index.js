@@ -7,7 +7,7 @@ const html1 = `
   <html>
     <body style="background: linear-gradient(90deg, #92fe9d 0%, #00c9ff 100%); height: 100vh; margin:0;">
       <h1 style="color:#232526; text-align:center; padding-top: 20vh; font-size:3em; font-family:monospace;">
-        🌈 <span style="color:#ff9800;">This is <b>*** nodejs updated app ***</b>!</span> 🌈
+        🌈 <span style="color:#ff9800;">This is <b>*** nodejs based application v1 ***</b>!</span> 🌈
       </h1>
     </body>
   </html>
